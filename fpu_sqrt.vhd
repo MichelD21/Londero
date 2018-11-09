@@ -300,6 +300,37 @@ begin
 			 rmode_i =>	s_rmode_i,
 			 output_o => post_norm_div_output,
 			 ine_o => post_norm_div_ine);
+			 
+	
+	--***Square units***
+
+	i_pre_norm_sqrt : pre_norm_sqrt
+	port map(
+			 clk_i => clk_i,
+			 opa_i => s_opa_i,
+			 fracta_52_o => pre_norm_sqrt_fracta_o,
+			 exp_o => pre_norm_sqrt_exp_o);
+		
+	i_sqrt: sqrt 
+	generic map(RD_WIDTH=>52, SQ_WIDTH=>26) 
+	port map(
+			 clk_i => clk_i,
+			 rad_i => pre_norm_sqrt_fracta_o, 
+			 start_i => s_start_i, 
+	   		 ready_o => open, 
+	  		 sqr_o => sqrt_sqr_o,
+			 ine_o => sqrt_ine_o);
+
+	i_post_norm_sqrt : post_norm_sqrt
+	port map(
+			clk_i => clk_i,
+			opa_i => s_opa_i,
+			fract_26_i => sqrt_sqr_o,
+			exp_i => pre_norm_sqrt_exp_o,
+			ine_i => sqrt_ine_o,
+			rmode_i => s_rmode_i,
+			output_o => post_norm_sqrt_output,
+			ine_o => post_norm_sqrt_ine_o);
 			
 			
 			
@@ -379,6 +410,9 @@ begin
 			elsif fpu_op_i="011" then
 				s_output1 	<= post_norm_div_output;
 				s_ine_o 		<= post_norm_div_ine;		
+			elsif fpu_op_i="100" then
+				s_output1 	<= post_norm_sqrt_output;
+				s_ine_o 	<= post_norm_sqrt_ine_o;			
 			else
 				s_output1 	<= (others => '0');
 				s_ine_o 		<= '0';

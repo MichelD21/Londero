@@ -67,7 +67,7 @@ entity fpu is
 		-- 001 = substract, 
 		-- 010 = multiply, 
 		-- 011 = divide,
-		-- 100 = square root
+		-- 100 = comparation, added in ray_tracing
 		-- 101 = unused
 		-- 110 = unused
 		-- 111 = unused
@@ -96,7 +96,16 @@ entity fpu is
         inf_o			: out std_logic; -- infinity
         zero_o			: out std_logic; -- zero
         qnan_o			: out std_logic; -- queit Not-a-Number
-        snan_o			: out std_logic -- signaling Not-a-Number
+        snan_o			: out std_logic; -- signaling Not-a-Number
+		
+		-- Comparison output - added in ray_tracing
+		altb_o			: out std_logic;
+		blta_o			: out std_logic;
+		aeqb_o			: out std_logic;
+		cmp_unordered_o	: out std_logic;
+		cmp_inf_o		: out std_logic;
+		cmp_zero_o		: out std_logic
+		
 	);   
 end fpu;
 
@@ -119,6 +128,12 @@ architecture rtl of fpu is
 	signal s_count : integer;
 	signal s_output1 : std_logic_vector(FP_WIDTH-1 downto 0);	
 	signal s_infa, s_infb : std_logic;
+	
+	--	comparison output registers signals - added during ray_tracing
+	signal s_altb_o : std_logic;
+	signal s_blta_o : std_logic;
+	signal s_aeqb_o : std_logic;
+	signal s_cmp_unordered_o, s_cmp_inf_o, s_cmp_zero_o : std_logic;
 	
 	--	***Add/Substract units signals***
 
@@ -162,53 +177,57 @@ architecture rtl of fpu is
 	signal post_norm_div_output : std_logic_vector(31 downto 0);
 	signal post_norm_div_ine : std_logic;
 	
-	--	***Square units***
-	
-	signal pre_norm_sqrt_fracta_o		: std_logic_vector(51 downto 0);
-	signal pre_norm_sqrt_exp_o				: std_logic_vector(7 downto 0);
-			 
-	signal sqrt_sqr_o			: std_logic_vector(25 downto 0);
-	signal sqrt_ine_o			: std_logic;
-
-	signal post_norm_sqrt_output	: std_logic_vector(31 downto 0);
-	signal post_norm_sqrt_ine_o		: std_logic;
-	
+	-- float comparator unit component declaration - added in ray_tracing
+	component fcmp is 
+	port (
+			opa		       	: in std_logic_vector(31 downto 0);   
+			opb		       	: in std_logic_vector(31 downto 0);
+			unordered		: out std_logic;
+			altb		  	: out std_logic;
+			blta		 	: out std_logic;
+			aeqb		  	: out std_logic;
+			inf				: out std_logic;
+			zero			: out std_logic
+			);   
+	end component;
 	
 begin
 	--***Add/Substract units***
 	
 	i_prenorm_addsub: pre_norm_addsub
     	port map (
-    	  clk_i => clk_i,
-				opa_i => s_opa_i,
-				opb_i => s_opb_i,
-				fracta_28_o => prenorm_addsub_fracta_28_o,
-				fractb_28_o => prenorm_addsub_fractb_28_o,
-				exp_o=> prenorm_addsub_exp_o);
-				
+			clk_i => clk_i,
+			opa_i => s_opa_i,
+			opb_i => s_opb_i,
+			fracta_28_o => prenorm_addsub_fracta_28_o,
+			fractb_28_o => prenorm_addsub_fractb_28_o,
+			exp_o=> prenorm_addsub_exp_o
+			);
+	
 	i_addsub: addsub_28
 		port map(
-			 clk_i => clk_i, 			
-			 fpu_op_i => s_fpu_op_i(0),		 
-			 fracta_i	=> prenorm_addsub_fracta_28_o,	
-			 fractb_i	=> prenorm_addsub_fractb_28_o,		
-			 signa_i =>  s_opa_i(31),			
-			 signb_i =>  s_opb_i(31),				
-			 fract_o => addsub_fract_o,			
-			 sign_o => addsub_sign_o);	
+			clk_i => clk_i, 			
+			fpu_op_i => s_fpu_op_i(0),		 
+			fracta_i	=> prenorm_addsub_fracta_28_o,	
+			fractb_i	=> prenorm_addsub_fractb_28_o,		
+			signa_i =>  s_opa_i(31),			
+			signb_i =>  s_opb_i(31),				
+			fract_o => addsub_fract_o,			
+			sign_o => addsub_sign_o
+			);
 			 
 	i_postnorm_addsub: post_norm_addsub
 	port map(
-		clk_i => clk_i,		
-		opa_i => s_opa_i,
-		opb_i => s_opb_i,	
-		fract_28_i => addsub_fract_o,
-		exp_i => prenorm_addsub_exp_o,
-		sign_i => addsub_sign_o,
-		fpu_op_i => s_fpu_op_i(0), 
-		rmode_i => s_rmode_i,
-		output_o => postnorm_addsub_output_o,
-		ine_o => postnorm_addsub_ine_o
+			clk_i => clk_i,		
+			opa_i => s_opa_i,
+			opb_i => s_opb_i,	
+			fract_28_i => addsub_fract_o,
+			exp_i => prenorm_addsub_exp_o,
+			sign_i => addsub_sign_o,
+			fpu_op_i => s_fpu_op_i(0), 
+			rmode_i => s_rmode_i,
+			output_o => postnorm_addsub_output_o,
+			ine_o => postnorm_addsub_ine_o
 		);
 	
 	--***Multiply units***
@@ -290,17 +309,31 @@ begin
 	
 	i_post_norm_div : post_norm_div
 	port map(
-			 clk_i => clk_i,
-			 opa_i => s_opa_i,
-			 opb_i => s_opb_i,
-			 qutnt_i =>	serial_div_qutnt,
-			 rmndr_i => serial_div_rmndr,
-			 exp_10_i => pre_norm_div_exp,
-			 sign_i	=> serial_div_sign,
-			 rmode_i =>	s_rmode_i,
-			 output_o => post_norm_div_output,
-			 ine_o => post_norm_div_ine);
+			clk_i => clk_i,
+			opa_i => s_opa_i,
+			opb_i => s_opb_i,
+			qutnt_i =>	serial_div_qutnt,
+			rmndr_i => serial_div_rmndr,
+			exp_10_i => pre_norm_div_exp,
+			sign_i	=> serial_div_sign,
+			rmode_i =>	s_rmode_i,
+			output_o => post_norm_div_output,
+			ine_o => post_norm_div_ine
+			);
 			
+	--***Comparator unit - added in ray_tracing***
+	
+	i_comparator : fcmp
+	port map(
+			opa			=> s_opa_i,
+			opb			=> s_opb_i,
+			unordered	=> s_cmp_unordered_o,
+			altb		=> s_altb_o,
+			blta		=> s_blta_o,
+			aeqb		=> s_aeqb_o,
+			inf			=> s_cmp_inf_o,
+			zero		=> s_cmp_zero_o
+			);
 			
 			
 -----------------------------------------------------------------			
@@ -330,6 +363,13 @@ begin
 			zero_o <= s_zero_o;
 			qnan_o <= s_qnan_o;
 			snan_o <= s_snan_o;
+			-- Comparison registers - added in ray_tracing
+			cmp_unordered_o <= s_cmp_unordered_o;
+			cmp_inf_o <= s_cmp_inf_o;
+			cmp_zero_o <= s_cmp_zero_o;
+			altb_o <= s_altb_o;
+			blta_o <= s_blta_o;
+			aeqb_o <= s_aeqb_o;
 		end if;
 	end process;	
 
@@ -353,7 +393,8 @@ begin
 				s_state <= waiting;
 				ready_o <= '1';
 				s_count <=0;
-			elsif s_count=33 and fpu_op_i="100" then
+			-- modified in ray_tracing to fit comparator instead of sqrt unit
+			elsif s_count=1 and fpu_op_i="100" then
 				s_state <= waiting;
 				ready_o <= '1';
 				s_count <=0;			
@@ -378,7 +419,11 @@ begin
 				s_ine_o 		<= post_norm_mul_ine;
 			elsif fpu_op_i="011" then
 				s_output1 	<= post_norm_div_output;
-				s_ine_o 		<= post_norm_div_ine;		
+				s_ine_o 		<= post_norm_div_ine;
+			-- modified in ray_tracing
+			-- elsif fpu_op_i="100" then
+				-- s_output1 		<= post_norm_div_output;
+				-- s_ine_o 		<= post_norm_div_ine;
 			else
 				s_output1 	<= (others => '0');
 				s_ine_o 		<= '0';
@@ -426,6 +471,12 @@ begin
 	s_zero_o <= '1' when or_reduce(s_output1(30 downto 0))='0' else '0';
 	s_qnan_o <= '1' when s_output1(30 downto 0)=QNAN else '0';
     s_snan_o <= '1' when s_opa_i(30 downto 0)=SNAN or s_opb_i(30 downto 0)=SNAN else '0';
+	
+	-- Comparison exceptions are ready to be outputed once they leave the comparator module
+	-- included for completion and future changes (if any) - added in ray_tracing
+	s_cmp_unordered_o <= s_cmp_unordered_o;
+	s_cmp_inf_o <= s_cmp_inf_o;
+	s_cmp_zero_o <= s_cmp_zero_o;
 
 
 end rtl;

@@ -55,6 +55,9 @@ package rayTracing_pkg is
 	constant FPU_DIV : std_logic_vector(2 downto 0) := "011";
 	constant FPU_CMP : std_logic_vector(2 downto 0) := "100";
 	
+	--FPU rounding mode
+	constant FPU_ROUNDING_MODE : std_logic(1 downto 0) := "00"; -- round to nearest even
+	
 	
 	-- FPU comunication
 	type fpu_t is record
@@ -69,9 +72,9 @@ package rayTracing_pkg is
 		result_o : data_t;
 		
 		--Comparator
-		gt_o     : std_logic;
-		eq_o     : std_logic;
-		lt_o     : std_logic;
+		agtb_o     : std_logic;
+		aeqb_o     : std_logic;
+		altb_o     : std_logic;
 	end record;
                 
 end package;

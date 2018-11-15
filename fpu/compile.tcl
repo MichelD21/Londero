@@ -9,44 +9,26 @@ if { ![file exist work] } {
 # Source files listed in hierarchical order: bottom -> top
 
 set sourceFiles {
+
+	fpupack.vhd
+	comppack.vhd
+	addsub_28.vhd
+	post_norm_addsub.vhd
+	pre_norm_addsub.vhd
+	fcmp.v
+	mul_24.vhd
+	post_norm_div.vhd
+	post_norm_mul.vhd
+	pre_norm_div.vhd
+	pre_norm_mul.vhd
+	serial_div.vhd
+	serial_mul.vhd
+	fpu.vhd
 	
-	#LIB
-	lib/rayTracing_pkg.vhd
-	
-	#FPU
-	fpu/fpupack.vhd
-	fpu/comppack.vhd
-	fpu/addsub_28.vhd
-	fpu/post_norm_addsub.vhd
-	fpu/pre_norm_addsub.vhd
-	fpu/fcmp.v
-	fpu/mul_24.vhd
-	fpu/post_norm_div.vhd
-	fpu/post_norm_mul.vhd
-	fpu/pre_norm_div.vhd
-	fpu/pre_norm_mul.vhd
-	fpu/serial_div.vhd
-	fpu/serial_mul.vhd
-	fpu/fpu.vhd
-	
-	#SUB_CIRCUITS
-	
-		#FPU_STARTER
-		fpu_starter/fpu_starter.vhd
-		
-		#SUB_VECTOR
-		
-		#DOT_PRODUCT
-		
-		#CROSS_PRODUCT
-	
-	#TOP
-	
-	#TOP_TB
-	
+	fpu_tb.vhd
 	}
 
-set top triangle_intersection
+set top fpu
 
 if { [llength $sourceFiles] > 0 } {
 	

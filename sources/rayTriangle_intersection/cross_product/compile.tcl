@@ -10,10 +10,10 @@ if { ![file exist work] } {
 
 set sourceFiles {
 	
-	#LIB
 	lib/rayTracing_pkg.vhd
 	
-	#FPU
+
+	
 	fpu/fpupack.vhd
 	fpu/comppack.vhd
 	fpu/addsub_28.vhd
@@ -29,24 +29,16 @@ set sourceFiles {
 	fpu/serial_mul.vhd
 	fpu/fpu.vhd
 	
-	#SUB_CIRCUITS
 	
-		#FPU_STARTER
-		fpu_starter/fpu_starter.vhd
 		
-		#SUB_VECTOR
-		
-		#DOT_PRODUCT
-		
-		#CROSS_PRODUCT
-	
-	#TOP
-	
-	#TOP_TB
-	
+	fpu_starter/fpu_starter.vhd
+
+	cross_product/cross_product.vhd
+	cross_product/cross_product_tb.vhd
 	}
 
-set top triangle_intersection
+set top cross_product
+	
 
 if { [llength $sourceFiles] > 0 } {
 	

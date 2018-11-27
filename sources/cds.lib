@@ -1,0 +1,3 @@
+define worklib /home/elc1054/elc1054-duarte201120456/INCA_libs/worklib
+include $CDS_INST_DIR/tools/inca/files/cds.lib
+define IBM /home/elc1054/elc1054-duarte201120456/IBM

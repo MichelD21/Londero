@@ -56,6 +56,8 @@ use work.fpupack.all;
 entity fpu is
     port (
         clk_i 			: in std_logic;
+	-- Added in ray_tracing
+	rst_i			: in std_logic;
 
         -- Input Operands A & B
         opa_i        	: in std_logic_vector(FP_WIDTH-1 downto 0);  -- Default: FP_WIDTH=32 
@@ -178,7 +180,7 @@ architecture rtl of fpu is
 	signal post_norm_div_ine : std_logic;
 	
 	-- float comparator unit component declaration - added in ray_tracing
-	component fcmp is 
+	component fcmp
 	port (
 			opa		       	: in std_logic_vector(31 downto 0);   
 			opb		       	: in std_logic_vector(31 downto 0);
@@ -339,9 +341,15 @@ begin
 -----------------------------------------------------------------			
 
 	-- Input Register
-	process(clk_i)
+	process(clk_i, rst_i)
 	begin
-		if rising_edge(clk_i) then	
+		if rst_i = '1' then
+			s_opa_i <= (others => '0');
+			s_opb_i <= (others => '0');
+			s_fpu_op_i <= (others => '0');
+			s_rmode_i <= (others => '0');
+			s_start_i <= '0';
+		elsif rising_edge(clk_i) then
 			s_opa_i <= opa_i;
 			s_opb_i <= opb_i;
 			s_fpu_op_i <= fpu_op_i;
@@ -351,9 +359,25 @@ begin
 	end process;
 	  
 	-- Output Register
-	process(clk_i)
+	process(clk_i, rst_i)
 	begin
-		if rising_edge(clk_i) then	
+		if rst_i = '1' then
+			output_o <= (others => '0');
+			ine_o <= '0';
+			overflow_o <= '0';
+			underflow_o <= '0';
+			div_zero_o <= '0';
+			inf_o <= '0';
+			zero_o <= '0';
+			qnan_o <= '0';
+			snan_o <= '0';
+			cmp_unordered_o <= '0';
+			cmp_inf_o <= '0';
+			cmp_zero_o <= '0';
+			altb_o <= '0';
+			blta_o <= '0';
+			aeqb_o <= '0';
+		elsif rising_edge(clk_i) then
 			output_o <= s_output_o;
 			ine_o <= s_ine_o;
 			overflow_o <= s_overflow_o;
@@ -375,9 +399,12 @@ begin
 
     
 	-- FSM
-	process(clk_i)
+	process(clk_i, rst_i)
 	begin
-		if rising_edge(clk_i) then
+		if rst_i = '1' then
+			s_state <= waiting;
+			s_count <= 0;
+		elsif rising_edge(clk_i) then
 			if s_start_i ='1' then
 				s_state <= busy;
 				s_count <= 0;
@@ -408,9 +435,12 @@ begin
 	end process;
 	        
 	-- Output Multiplexer
-	process(clk_i)
+	process(clk_i, rst_i)
 	begin
-		if rising_edge(clk_i) then
+		if rst_i = '1' then
+			s_output1 <= (others => '0');
+			s_ine_o <= '0';
+		elsif rising_edge(clk_i) then
 			if fpu_op_i="000" or fpu_op_i="001" then	
 				s_output1 		<= postnorm_addsub_output_o;
 				s_ine_o 		<= postnorm_addsub_ine_o;
@@ -435,33 +465,35 @@ begin
 	s_infa <= '1' when s_opa_i(30 downto 23)="11111111"  else '0';
 	s_infb <= '1' when s_opb_i(30 downto 23)="11111111"  else '0';
 	
-
+-- Modified in ray_tracing
 	--In round down: the subtraction of two equal numbers other than zero are always -0!!!
-	process(s_output1, s_rmode_i, s_div_zero_o, s_infa, s_infb, s_qnan_o, s_snan_o, s_zero_o, s_fpu_op_i, s_opa_i, s_opb_i )
-	begin
-			if s_rmode_i="00" or (s_div_zero_o or (s_infa or s_infb) or s_qnan_o or s_snan_o)='1' then --round-to-nearest-even
-				s_output_o <= s_output1;
-			elsif s_rmode_i="01" and s_output1(30 downto 23)="11111111" then
-				--In round-to-zero: the sum of two non-infinity operands is never infinity,even if an overflow occures
-				s_output_o <= s_output1(31) & "1111111011111111111111111111111";
-			elsif s_rmode_i="10" and s_output1(31 downto 23)="111111111" then
-				--In round-up: the sum of two non-infinity operands is never negative infinity,even if an overflow occures
-				s_output_o <= "11111111011111111111111111111111";
-			elsif s_rmode_i="11" then
-				--In round-down: a-a= -0
-				if (s_fpu_op_i="000" or s_fpu_op_i="001") and s_zero_o='1' and (s_opa_i(31) or (s_fpu_op_i(0) xor s_opb_i(31)))='1' then
-					s_output_o <= "1" & s_output1(30 downto 0);	
-				--In round-down: the sum of two non-infinity operands is never postive infinity,even if an overflow occures
-				elsif s_output1(31 downto 23)="011111111" then
-					s_output_o <= "01111111011111111111111111111111";
-				else
-					s_output_o <= s_output1;
-				end if;			
-			else
-				s_output_o <= s_output1;
-			end if;
-	end process;
-		
+	--process(s_output1, s_rmode_i, s_div_zero_o, s_infa, s_infb, s_qnan_o, s_snan_o, s_zero_o, s_fpu_op_i, s_opa_i, s_opb_i)
+	--begin
+	--		if s_rmode_i="00" or (s_div_zero_o or (s_infa or s_infb) or s_qnan_o or s_snan_o)='1' then --round-to-nearest-even
+	--			s_output_o <= s_output1;
+	--		elsif s_rmode_i="01" and s_output1(30 downto 23)="11111111" then
+	--			--In round-to-zero: the sum of two non-infinity operands is never infinity,even if an overflow occures
+	--			s_output_o <= s_output1(31) & "1111111011111111111111111111111";
+	--		elsif s_rmode_i="10" and s_output1(31 downto 23)="111111111" then
+	--			--In round-up: the sum of two non-infinity operands is never negative infinity,even if an overflow occures
+	--			s_output_o <= "11111111011111111111111111111111";
+	--		elsif s_rmode_i="11" then
+	--			--In round-down: a-a= -0
+	--			if (s_fpu_op_i="000" or s_fpu_op_i="001") and s_zero_o='1' and (s_opa_i(31) or (s_fpu_op_i(0) xor s_opb_i(31)))='1' then
+	--				s_output_o <= "1" & s_output1(30 downto 0);	
+	--			--In round-down: the sum of two non-infinity operands is never postive infinity,even if an overflow occures
+	--			elsif s_output1(31 downto 23)="011111111" then
+	--				s_output_o <= "01111111011111111111111111111111";
+	--			else
+	--				s_output_o <= s_output1;
+	--			end if;			
+	--		else
+	--			s_output_o <= s_output1;
+	--		end if;
+	--end process;
+
+	-- Added in ray_tracing
+	s_output_o <= s_output1;
 
 	-- Generate Exceptions 
 	s_underflow_o <= '1' when s_output1(30 downto 23)="00000000" and s_ine_o='1' else '0'; 

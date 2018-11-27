@@ -18,7 +18,8 @@ entity sub_vector is
 		result_o      : out vector3D_t;                    -- Vector_A - Vector_B
 		
 		-- FPU
-		fpu_io        : inout fpu_t                       --Control and Data to/from fpu.
+		fpu_i        : in fpu_i_t;                       --Control and Data from fpu.
+		fpu_o        : out fpu_o_t                      --Control and Data to fpu.
     );
 end sub_vector;
 
@@ -64,27 +65,27 @@ begin
 				
 			    -- Subtract x dimension.
 				when SUB_X_S  =>
-					if fpu_io.ready_o = '1' then
+					if fpu_i.ready = '1' then
 						CurrentState_s <= SUB_Y_S;
-						result_o.x <= fpu_io.result_o;
+						result_o.x <= fpu_i.result;
 					else
 						CurrentState_s <= SUB_X_S;
 					end if;
 					
 				-- Subtract y dimension.
 				when SUB_Y_S  =>
-					if fpu_io.ready_o = '1' then
+					if fpu_i.ready = '1' then
 						CurrentState_s <= SUB_Z_S;
-						result_o.y <= fpu_io.result_o;
+						result_o.y <= fpu_i.result;
 					else
 						CurrentState_s <= SUB_Y_S;
 					end if;
 
 				-- Subtract z dimension.
 				when SUB_Z_S  =>
-					if fpu_io.ready_o = '1' then
+					if fpu_i.ready = '1' then
 						CurrentState_s <= DONE_S;
-						result_o.z <= fpu_io.result_o;
+						result_o.z <= fpu_i.result;
 					else
 						CurrentState_s <= SUB_Z_S;
 					end if;		
@@ -102,16 +103,16 @@ begin
 	done_o <= '1' when CurrentState_s = DONE_S else '0';
 	
 	-- FPU
-	fpu_io.a_i     <= vecA_s.x when CurrentState_s = SUB_X_S else
+	fpu_o.a     <= vecA_s.x when CurrentState_s = SUB_X_S else
 					  vecA_s.y when CurrentState_s = SUB_Y_S else
 					  vecA_s.z;
 					  
-	fpu_io.b_i     <= vecB_s.x when CurrentState_s = SUB_X_S else
+	fpu_o.b     <= vecB_s.x when CurrentState_s = SUB_X_S else
 					  vecB_s.y when CurrentState_s = SUB_Y_S else
 					  vecB_s.z;
 					  
-	fpu_io.op_i    <= FPU_SUB;
+	fpu_o.op    <= FPU_SUB;
 	
-	fpu_io.start_i <= '1' when CurrentState_s = SUB_X_S or CurrentState_s = SUB_Y_S or CurrentState_s = SUB_Z_S else '0';
+	fpu_o.start <= '1' when CurrentState_s = SUB_X_S or CurrentState_s = SUB_Y_S or CurrentState_s = SUB_Z_S else '0';
 	    
 end behavioral;

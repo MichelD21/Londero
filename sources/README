@@ -1,0 +1,35 @@
+Step-by-step usage and settings for the scripts used in the Encounter RTL logic synthesis tool:
+
+1- In the home of the user (~), create a new directory named "sources";
+2- Copy the following files to the ~/sources directory:
+	- constraints.sdc;
+	- rc.tcl;
+	- path.tcl;
+	- tech.tcl;
+	Note: Any of the above files provided with a different name must be renamed to fit this README.
+3- Create a directory named as the top entity of the hierarchy to be synthetized (minus .vhd/.v);
+4- Copy your project Verilog and VHDL source files to the directory created in step (3). Internal directory hierarchy may be kept;
+5- Copy the "rcLogicSyn.sh" script file to your home directory;
+6- Using a terminal on your home directory, call the script using the following syntax:
+	. rcLogicSyn.sh [top] [frequency] [clock] [reset]
+	Where [top] is the same name used in step (3), [frequency] is the target synthesis frequency in MHz (1 MHz = 1e6 Hz), and
+	[clock] and [reset] are the name of the clock signal and the reset signal respectively used in the top Verilog/VHDL file.
+
+After completion, the following reports may be found under ~/[top]/trunk/backend/synthesis/reports/ :
+
+area.rpt	- Total and instances area;
+power.rpt	- Total and instances power;
+gates.rpt	- Number of times each cell was instanced; 
+drc.rpt		- Whether any or none of the DRC rules were violated;
+timing.rpt	- Magnitude of the abscence/presence of timing violations, along with the critical path;
+
+For further clarification, following is an example of usage:
+	
+	Name of the top entity: rayTriangle_intersection.vhd
+	Desired synthesis frequency: 250 MHz
+	Clock and reset signal names: clk, rst
+	
+	In the home (~) directory, open a terminal and type:
+	. rcLogicSyn.sh rayTriangle_intersection 250 clk rst
+
+
